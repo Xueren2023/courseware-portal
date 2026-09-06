@@ -1,0 +1,10 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Runtime data — do NOT commit user uploads or the local database
+uploads/
+submissions.db
+server.log
+*.log
