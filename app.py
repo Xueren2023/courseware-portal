@@ -14,7 +14,9 @@ Routes:
     GET  /download/<id> -> download a stored file
     GET  /delete/<id>?admin=<TOKEN> -> delete a submission (teacher only)
     GET  /materials   -> course materials page (课件下载 / 教学大纲 / 教材参考书)
-    GET  /mat/<slug>  -> serve a course-material file (fixed whitelist only)
+    GET  /mat/<slug>  -> serve a course-material file (whitelist from JSON)
+    GET  /materials-admin -> teacher edit window (upload / edit / delete materials)
+    POST /materials-admin -> handle admin edits (requires admin token)
 
 All user-supplied text is HTML-escaped before rendering (no XSS).
 """
@@ -23,6 +25,7 @@ import os
 import re
 import io
 import sys
+import json
 import html
 import sqlite3
 import uuid
@@ -43,58 +46,124 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # ----------------------------- COURSE MATERIALS -----------------------------
 SLIDES_DIR = os.path.join(BASE_DIR, "slides")   # compiled English Beamer PDFs
-PPT_DIR = os.path.join(BASE_DIR, "ppt")         # English source slides (.pptx)
+PPT_DIR = os.path.join(BASE_DIR, "ppt")          # English source slides (.pptx)
+MATERIALS_UPLOAD_DIR = os.path.join(BASE_DIR, "materials_uploads")  # teacher uploads
+MATERIALS_PATH = os.path.join(BASE_DIR, "materials_data.json")
+os.makedirs(MATERIALS_UPLOAD_DIR, exist_ok=True)
 
-# (slug, filename, 中文标题, English title, pages)
-LECTURE_PDFS = [
-    ("ch1", "ch1_intro_beamer.pdf", "第1章 · 引言 + 映射与函数",
-     "Chapter 1 — Introduction, Mappings and Functions", 137),
-    ("ch2", "ch2_limits_beamer.pdf", "第2章 · 数列的极限 + 函数的极限",
-     "Chapter 2 — Limits of Sequences and Functions", 151),
-    ("ch2c", "ch2_limits_cont_beamer.pdf",
-     "第2章续 · 无穷小与无穷大 + 极限运算法则 + 无穷小比较",
-     "Chapter 2 (cont.) — Infinitesimals, Limit Laws, Order of Infinitesimals", 141),
-]
+# Default content (used only if materials_data.json is missing).
+DEFAULT_MATERIALS = {
+    "lectures": [
+        {"slug": "ch1", "file": "slides/ch1_intro_beamer.pdf",
+         "title_zh": "第1章 · 引言 + 映射与函数",
+         "title_en": "Chapter 1 — Introduction, Mappings and Functions", "pages": "137"},
+        {"slug": "ch2", "file": "slides/ch2_limits_beamer.pdf",
+         "title_zh": "第2章 · 数列的极限 + 函数的极限",
+         "title_en": "Chapter 2 — Limits of Sequences and Functions", "pages": "151"},
+        {"slug": "ch2c", "file": "slides/ch2_limits_cont_beamer.pdf",
+         "title_zh": "第2章续 · 无穷小与无穷大 + 极限运算法则 + 无穷小比较",
+         "title_en": "Chapter 2 (cont.) — Infinitesimals, Limit Laws, Order of Infinitesimals",
+         "pages": "141"},
+    ],
+    "sections": [
+        {"slug": "S1_1", "section": "§1.1", "title_zh": "映射与函数",
+         "title_en": "Mappings and Functions", "file": "ppt/S1_1映射与函数_en.pptx"},
+        {"slug": "S1_2", "section": "§1.2", "title_zh": "数列的极限",
+         "title_en": "Limits of Sequences", "file": "ppt/S1_2数列的极限_en.pptx"},
+        {"slug": "S1_3", "section": "§1.3", "title_zh": "函数的极限",
+         "title_en": "Limits of Functions", "file": "ppt/S1_3函数的极限_en.pptx"},
+        {"slug": "S1_4", "section": "§1.4", "title_zh": "无穷小与无穷大",
+         "title_en": "Infinitesimals and Infinities", "file": "ppt/S1_4无穷小与无穷大_en.pptx"},
+        {"slug": "S1_5", "section": "§1.5", "title_zh": "极限运算法则",
+         "title_en": "Limit Laws", "file": "ppt/S1_5极限运算法则_en.pptx"},
+        {"slug": "S1_6", "section": "§1.6", "title_zh": "极限存在准则",
+         "title_en": "Criteria for Existence of Limits", "file": "ppt/S1_6极限存在准则_en.pptx"},
+        {"slug": "S1_7", "section": "§1.7", "title_zh": "无穷小的比较",
+         "title_en": "Comparison of Infinitesimals", "file": "ppt/S1_7无穷小比较_en.pptx"},
+        {"slug": "S1_8", "section": "§1.8", "title_zh": "连续性与间断点",
+         "title_en": "Continuity and Discontinuities", "file": "ppt/S1_8连续性间断点_en.pptx"},
+        {"slug": "S1_9", "section": "§1.9", "title_zh": "连续函数的运算",
+         "title_en": "Operations on Continuous Functions", "file": "ppt/S1_9连续函数运算_en.pptx"},
+        {"slug": "S1_10", "section": "§1.10", "title_zh": "连续函数的性质",
+         "title_en": "Properties of Continuous Functions", "file": "ppt/S1_10连续函数性质_en.pptx"},
+    ],
+    "syllabus": [
+        {"chapter": "第1章", "zh": "函数与极限", "en": "Functions and Limits",
+         "hours": "约 18 学时", "term": "第一学期", "status": "ready"},
+        {"chapter": "第2章", "zh": "导数与微分", "en": "Derivatives and Differentials",
+         "hours": "约 16 学时", "term": "第一学期", "status": "todo"},
+        {"chapter": "第3章", "zh": "微分中值定理与导数的应用",
+         "en": "Mean Value Theorems and Applications", "hours": "约 14 学时",
+         "term": "第一学期", "status": "todo"},
+        {"chapter": "第4章", "zh": "不定积分", "en": "Indefinite Integrals",
+         "hours": "约 12 学时", "term": "第一学期", "status": "todo"},
+        {"chapter": "第5章", "zh": "定积分", "en": "Definite Integrals",
+         "hours": "约 12 学时", "term": "第一学期", "status": "todo"},
+        {"chapter": "第6章", "zh": "定积分的应用", "en": "Applications of Definite Integrals",
+         "hours": "约 10 学时", "term": "第二学期", "status": "todo"},
+        {"chapter": "第7章", "zh": "微分方程", "en": "Differential Equations",
+         "hours": "约 14 学时", "term": "第二学期", "status": "todo"},
+    ],
+    "textbooks": [
+        {"kind": "主教材", "title": "《高等数学》第八版（上册 / 下册）",
+         "note": "同济大学数学科学学院 编，高等教育出版社"},
+        {"kind": "习题指导", "title": "《高等数学习题全解指导（配第八版）》",
+         "note": "上册 / 下册，与主教材配套"},
+        {"kind": "竞赛参考", "title": "《全国大学生数学竞赛解析教程（非数学专业类）》",
+         "note": "余志坤 主编，科学出版社，2023"},
+    ],
+}
 
-# (slug, 小节, 中文标题, English title, filename)
-SECTION_PPTS = [
-    ("S1_1", "§1.1", "映射与函数", "Mappings and Functions", "S1_1映射与函数_en.pptx"),
-    ("S1_2", "§1.2", "数列的极限", "Limits of Sequences", "S1_2数列的极限_en.pptx"),
-    ("S1_3", "§1.3", "函数的极限", "Limits of Functions", "S1_3函数的极限_en.pptx"),
-    ("S1_4", "§1.4", "无穷小与无穷大", "Infinitesimals and Infinities", "S1_4无穷小与无穷大_en.pptx"),
-    ("S1_5", "§1.5", "极限运算法则", "Limit Laws", "S1_5极限运算法则_en.pptx"),
-    ("S1_6", "§1.6", "极限存在准则", "Criteria for Existence of Limits", "S1_6极限存在准则_en.pptx"),
-    ("S1_7", "§1.7", "无穷小的比较", "Comparison of Infinitesimals", "S1_7无穷小比较_en.pptx"),
-    ("S1_8", "§1.8", "连续性与间断点", "Continuity and Discontinuities", "S1_8连续性间断点_en.pptx"),
-    ("S1_9", "§1.9", "连续函数的运算", "Operations on Continuous Functions", "S1_9连续函数运算_en.pptx"),
-    ("S1_10", "§1.10", "连续函数的性质", "Properties of Continuous Functions", "S1_10连续函数性质_en.pptx"),
-]
 
-# 课程大纲与教学进度 (章节, 中文, English, 学时, 课件状态 ready/todo)
-SYLLABUS = [
-    ("第1章", "函数与极限", "Functions and Limits", "约 18 学时", "ready"),
-    ("第2章", "导数与微分", "Derivatives and Differentials", "约 16 学时", "todo"),
-    ("第3章", "微分中值定理与导数的应用", "Mean Value Theorems and Applications", "约 14 学时", "todo"),
-    ("第4章", "不定积分", "Indefinite Integrals", "约 12 学时", "todo"),
-    ("第5章", "定积分", "Definite Integrals", "约 12 学时", "todo"),
-    ("第6章", "定积分的应用", "Applications of Definite Integrals", "约 10 学时", "todo"),
-    ("第7章", "微分方程", "Differential Equations", "约 14 学时", "todo"),
-]
+def load_materials():
+    """Load course-material content from materials_data.json.
 
-# 教材与参考书 (类别, 书名, 说明)
-TEXTBOOKS = [
-    ("主教材", "《高等数学》第八版（上册 / 下册）", "同济大学数学科学学院 编，高等教育出版社"),
-    ("习题指导", "《高等数学习题全解指导（配第八版）》", "上册 / 下册，与主教材配套"),
-    ("竞赛参考", "《全国大学生数学竞赛解析教程（非数学专业类）》", "余志坤 主编，科学出版社，2023"),
-]
+    Falls back to DEFAULT_MATERIALS if the file is missing or corrupt.
+    """
+    try:
+        with open(MATERIALS_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return {k: list(v) for k, v in DEFAULT_MATERIALS.items()}
+    for k in ("lectures", "sections", "syllabus", "textbooks"):
+        data.setdefault(k, [])
+    return data
 
-# slug -> absolute path. Whitelist lookups only: no user input ever reaches the
-# filesystem, so path traversal (../../) is impossible by construction.
-MATERIAL_FILES = {}
-for _s, _f, _zh, _en, _p in LECTURE_PDFS:
-    MATERIAL_FILES[_s] = os.path.join(SLIDES_DIR, _f)
-for _s, _sec, _zh, _en, _f in SECTION_PPTS:
-    MATERIAL_FILES[_s] = os.path.join(PPT_DIR, _f)
+
+def save_materials(data):
+    """Persist content to disk, then best-effort push to git (Render durable)."""
+    tmp = MATERIALS_PATH + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, MATERIALS_PATH)
+    _git_persist()
+
+
+def _git_persist():
+    """Best-effort commit of material changes so they survive a Render
+    restart (free plan has ephemeral disk). Requires GH_PUSH_TOKEN env var.
+    Never raises — failures are silently ignored so saving still works.
+    """
+    token = os.environ.get("GH_PUSH_TOKEN")
+    if not token:
+        return
+    try:
+        import subprocess
+        repo = subprocess.check_output(
+            ["git", "-C", BASE_DIR, "remote", "get-url", "origin"],
+            stderr=subprocess.DEVNULL).decode().strip()
+        if not repo.startswith("https://"):
+            return
+        push_url = re.sub(r"https://([^@]+@)?", "https://" + token + "@", repo)
+        subprocess.run(["git", "-C", BASE_DIR, "add", "materials_data.json",
+                        "materials_uploads"], check=False, stderr=subprocess.DEVNULL)
+        subprocess.run(["git", "-C", BASE_DIR, "commit", "-m",
+                        "update course materials (admin)"],
+                       check=False, stderr=subprocess.DEVNULL)
+        subprocess.run(["git", "-C", BASE_DIR, "push", push_url, "HEAD:main"],
+                       check=False, stderr=subprocess.DEVNULL, timeout=60)
+    except Exception:
+        pass
 
 
 # ----------------------------- DATABASE -----------------------------
@@ -212,12 +281,15 @@ h3.sub{font-size:14px;margin:22px 0 6px;color:var(--primary2)}
 .en-sm{font-size:12px;color:var(--muted);font-weight:400}
 .badge{display:inline-block;background:#f3f4f6;color:#6b7280;border-radius:6px;padding:1px 8px;font-size:12px}
 .badge.ok{background:#ecfdf5;color:#047857}
+.badge.term1{background:#eff6ff;color:#1d4ed8}
+.badge.term2{background:#fff7ed;color:#c2410c}
 """
 
 NAV = (
     '<a href="/">＋ 上传</a> &nbsp;·&nbsp; '
     '<a href="/gallery">作品墙</a> &nbsp;·&nbsp; '
-    '<a href="/materials">课堂资料</a>'
+    '<a href="/materials">课堂资料</a> &nbsp;·&nbsp; '
+    '<a href="/materials-admin">管理资料</a>'
 )
 
 UPLOAD_PAGE = """<!doctype html>
@@ -325,28 +397,34 @@ def _size_str(path):
 
 
 def materials_page():
+    M = load_materials()
+
     # --- lecture PDFs ---
     rows = []
-    for slug, fn, zh, en, pages in LECTURE_PDFS:
-        p = MATERIAL_FILES[slug]
-        link = (f"<a class='dl' href='/mat/{slug}'>下载 / 预览</a>"
-                if os.path.isfile(p) else "<span class='note'>文件缺失</span>")
+    for it in M["lectures"]:
+        p = os.path.join(BASE_DIR, it.get("file", ""))
+        ok = os.path.isfile(p)
+        link = (f"<a class='dl' href='/mat/{html.escape(it['slug'])}'>下载 / 预览</a>"
+                if ok else "<span class='note'>文件缺失</span>")
         rows.append(
-            f"<tr><td>{html.escape(zh)}<div class='en-sm'>{html.escape(en)}</div></td>"
-            f"<td>{pages} 页</td><td>{_size_str(p)}</td><td>{link}</td></tr>")
+            f"<tr><td>{html.escape(it.get('title_zh',''))}"
+            f"<div class='en-sm'>{html.escape(it.get('title_en',''))}</div></td>"
+            f"<td>{html.escape(str(it.get('pages','')))} 页</td>"
+            f"<td>{_size_str(p)}</td><td>{link}</td></tr>")
     lectures = ("<table><thead><tr><th>内容</th><th>页数</th><th>大小</th>"
                 "<th>下载</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table>")
 
     # --- section PPTs ---
     rows = []
-    for slug, sec, zh, en, fn in SECTION_PPTS:
-        p = MATERIAL_FILES[slug]
-        link = (f"<a class='dl' href='/mat/{slug}'>PPT</a>"
-                if os.path.isfile(p) else "<span class='note'>缺失</span>")
+    for it in M["sections"]:
+        p = os.path.join(BASE_DIR, it.get("file", ""))
+        ok = os.path.isfile(p)
+        link = (f"<a class='dl' href='/mat/{html.escape(it['slug'])}'>PPT</a>"
+                if ok else "<span class='note'>缺失</span>")
         rows.append(
-            f"<tr><td><span class='tag'>{html.escape(sec)}</span></td>"
-            f"<td>{html.escape(zh)}</td>"
-            f"<td class='en-sm'>{html.escape(en)}</td>"
+            f"<tr><td><span class='tag'>{html.escape(it.get('section',''))}</span></td>"
+            f"<td>{html.escape(it.get('title_zh',''))}</td>"
+            f"<td class='en-sm'>{html.escape(it.get('title_en',''))}</td>"
             f"<td>{_size_str(p)}</td><td>{link}</td></tr>")
     sections = ("<table><thead><tr><th>小节</th><th>内容</th><th>English</th>"
                 "<th>大小</th><th>下载</th></tr></thead><tbody>"
@@ -354,22 +432,28 @@ def materials_page():
 
     # --- syllabus ---
     rows = []
-    for ch, zh, en, hrs, st in SYLLABUS:
-        badge = ("<span class='badge ok'>课件已上线</span>" if st == "ready"
-                 else "<span class='badge'>待更新</span>")
+    for it in M["syllabus"]:
+        badge = ("<span class='badge ok'>课件已上线</span>"
+                 if it.get("status") == "ready" else "<span class='badge'>待更新</span>")
+        term = it.get("term", "")
+        term_cls = "badge term1" if term == "第一学期" else ("badge term2" if term == "第二学期" else "badge")
+        term_html = f"<span class='{term_cls}'>{html.escape(term)}</span>" if term else ""
         rows.append(
-            f"<tr><td><b>{html.escape(ch)}</b></td>"
-            f"<td>{html.escape(zh)}<div class='en-sm'>{html.escape(en)}</div></td>"
-            f"<td>{html.escape(hrs)}</td><td>{badge}</td></tr>")
+            f"<tr><td><b>{html.escape(it.get('chapter',''))}</b></td>"
+            f"<td>{html.escape(it.get('zh',''))}"
+            f"<div class='en-sm'>{html.escape(it.get('en',''))}</div></td>"
+            f"<td>{html.escape(it.get('hours',''))}</td>"
+            f"<td>{term_html}</td><td>{badge}</td></tr>")
     syllabus = ("<table><thead><tr><th>章节</th><th>内容</th><th>学时</th>"
-                "<th>课件</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table>")
+                "<th>学期</th><th>课件</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table>")
 
     # --- textbooks ---
     rows = []
-    for cat, name, desc in TEXTBOOKS:
+    for it in M["textbooks"]:
         rows.append(
-            f"<tr><td><span class='tag'>{html.escape(cat)}</span></td>"
-            f"<td>{html.escape(name)}<div class='en-sm'>{html.escape(desc)}</div></td></tr>")
+            f"<tr><td><span class='tag'>{html.escape(it.get('kind',''))}</span></td>"
+            f"<td>{html.escape(it.get('title',''))}"
+            f"<div class='en-sm'>{html.escape(it.get('note',''))}</div></td></tr>")
     books = ("<table><thead><tr><th>类别</th><th>书目</th></tr></thead><tbody>"
              + "".join(rows) + "</tbody></table>")
 
@@ -380,6 +464,248 @@ def materials_page():
             .replace("{sections}", sections)
             .replace("{syllabus}", syllabus)
             .replace("{books}", books))
+
+
+# ----------------------------- ADMIN (self-service) -----------------------------
+ADMIN_PAGE = """<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>资料管理</title><style>{css}</style></head>
+<body>
+<header><h1>课堂资料管理</h1><p>上传新资料 · 修改标题 / 大纲 / 教材（无需找开发者）</p></header>
+<div class="topnav">{nav}</div>
+<div class="wrap">
+{body}
+</div>
+<footer>Courseware Portal · 资料管理</footer>
+</body></html>"""
+
+
+def _new_slug(stem, existing):
+    base = re.sub(r'[^A-Za-z0-9_]+', '_', stem).strip('_') or "m"
+    s = base
+    i = 2
+    while s in existing:
+        s = base + "_" + str(i)
+        i += 1
+    return s
+
+
+def admin_login_page(wrong=False):
+    msg = ('<div class="banner" style="background:#fef2f2;color:#991b1b;'
+           'border-color:#fecaca">口令错误，请重试。</div>') if wrong else ""
+    body = msg + """<div class="card">
+  <h2 class="sec">管理员登录</h2>
+  <form method="get" action="/materials-admin">
+    <label>管理员口令</label>
+    <input type="password" name="admin" required>
+    <button type="submit">进入管理</button>
+  </form>
+  <div class="note">口令与作品墙删除用的相同（ADMIN_TOKEN）。</div>
+</div>"""
+    return (ADMIN_PAGE.replace("{css}", PAGE_CSS)
+            .replace("{nav}", NAV).replace("{body}", body))
+
+
+def admin_dashboard(token, edit=None):
+    M = load_materials()
+    b = []
+    b.append('<div class="note" style="margin-bottom:14px">编辑会自动保存；'
+             '在免费版 Render 上会通过 Git 自动存回仓库，重启也不丢。</div>')
+    if edit:
+        ef = _edit_form(M, edit, token)
+        if ef:
+            b.append(ef)
+    # upload
+    b.append(
+        '<div class="card"><h2 class="sec">上传新资料 <span class="en">Add a file</span></h2>'
+        '<form method="post" action="/materials-admin" enctype="multipart/form-data">'
+        '<input type="hidden" name="admin" value="' + html.escape(token) + '">'
+        '<input type="hidden" name="action" value="upload">'
+        '<label>类型</label><select name="kind"><option value="lecture">英文讲义 PDF</option>'
+        '<option value="section">分节 PPT</option></select>'
+        '<label>小节标识（仅 PPT，如 §1.11）</label>'
+        '<input type="text" name="section" placeholder="§1.11">'
+        '<label>中文标题 *</label><input type="text" name="title_zh" required>'
+        '<label>English 标题</label><input type="text" name="title_en">'
+        '<label>页数（仅 PDF，可选）</label><input type="text" name="pages" placeholder="如 88">'
+        '<label>文件（PDF / PPT / PPTX）*</label><input type="file" name="file" required>'
+        '<button type="submit">保存并上传</button></form></div>')
+    # lectures
+    b.append('<div class="card" style="margin-top:18px"><h2 class="sec">讲义 PDF 管理</h2>'
+             '<table><thead><tr><th>中文标题</th><th>English</th><th>页数</th>'
+             '<th>文件</th><th></th></tr></thead><tbody>')
+    for it in M["lectures"]:
+        s = it.get("slug", "")
+        b.append("<tr><td>" + html.escape(it.get("title_zh", "")) + "</td>"
+                 "<td class='en-sm'>" + html.escape(it.get("title_en", "")) + "</td>"
+                 "<td>" + html.escape(str(it.get("pages", ""))) + "</td>"
+                 "<td class='en-sm'>" + html.escape(it.get("file", "")) + "</td>"
+                 "<td><a class='dl' href='/materials-admin?admin=" + urllib.parse.quote(token)
+                 + "&amp;edit=lecture:" + urllib.parse.quote(s) + "'>编辑</a> "
+                 "<a class='del' href='/materials-admin?admin=" + urllib.parse.quote(token)
+                 + "&amp;action=delete&amp;kind=lecture&amp;slug=" + urllib.parse.quote(s)
+                 + "' onclick=\"return confirm('确认删除？')\">删除</a></td></tr>")
+    b.append('</tbody></table></div>')
+    # sections
+    b.append('<div class="card" style="margin-top:18px"><h2 class="sec">分节 PPT 管理</h2>'
+             '<table><thead><tr><th>小节</th><th>中文标题</th><th>English</th>'
+             '<th>文件</th><th></th></tr></thead><tbody>')
+    for it in M["sections"]:
+        s = it.get("slug", "")
+        b.append("<tr><td><span class='tag'>" + html.escape(it.get("section", ""))
+                 + "</span></td><td>" + html.escape(it.get("title_zh", ""))
+                 + "</td><td class='en-sm'>" + html.escape(it.get("title_en", ""))
+                 + "</td><td class='en-sm'>" + html.escape(it.get("file", ""))
+                 + "</td><td><a class='dl' href='/materials-admin?admin=" + urllib.parse.quote(token)
+                 + "&amp;edit=section:" + urllib.parse.quote(s) + "'>编辑</a> "
+                 "<a class='del' href='/materials-admin?admin=" + urllib.parse.quote(token)
+                 + "&amp;action=delete&amp;kind=section&amp;slug=" + urllib.parse.quote(s)
+                 + "' onclick=\"return confirm('确认删除？')\">删除</a></td></tr>")
+    b.append('</tbody></table></div>')
+    # syllabus
+    b.append('<div class="card" style="margin-top:18px"><h2 class="sec">课程大纲与教学进度</h2>'
+             '<form method="post" action="/materials-admin" style="margin-bottom:14px">'
+             '<input type="hidden" name="admin" value="' + html.escape(token) + '">'
+             '<input type="hidden" name="action" value="add_syllabus">'
+             '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">'
+             '<span><label>章节</label><input type="text" name="chapter" placeholder="第8章" required></span>'
+             '<span><label>中文</label><input type="text" name="zh" placeholder="空间解析几何" required></span>'
+             '<span><label>English</label><input type="text" name="en" placeholder="..."></span>'
+             '<span><label>学时</label><input type="text" name="hours" placeholder="约 10 学时"></span>'
+             '<span><label>学期</label><select name="term"><option value="">—</option>'
+             '<option value="第一学期">第一学期</option>'
+             '<option value="第二学期">第二学期</option></select></span>'
+             '<span><label>状态</label><select name="status"><option value="todo">待更新</option>'
+             '<option value="ready">课件已上线</option></select></span>'
+             '<button type="submit">＋ 添加章节</button></div></form>'
+             '<table><thead><tr><th>章节</th><th>中文</th><th>English</th><th>学时</th>'
+             '<th>学期</th><th>状态</th><th></th></tr></thead><tbody>')
+    for i, it in enumerate(M["syllabus"]):
+        b.append("<tr><td><b>" + html.escape(it.get("chapter", "")) + "</b></td>"
+                 "<td>" + html.escape(it.get("zh", "")) + "</td>"
+                 "<td class='en-sm'>" + html.escape(it.get("en", "")) + "</td>"
+                 "<td>" + html.escape(it.get("hours", "")) + "</td>"
+                 "<td>" + html.escape(it.get("term", "")) + "</td>"
+                 "<td>" + html.escape(it.get("status", "")) + "</td>"
+                 "<td><a class='dl' href='/materials-admin?admin=" + urllib.parse.quote(token)
+                 + "&amp;edit=syllabus:" + str(i) + "'>编辑</a> "
+                 "<a class='del' href='/materials-admin?admin=" + urllib.parse.quote(token)
+                 + "&amp;action=delete&amp;kind=syllabus&amp;idx=" + str(i)
+                 + "' onclick=\"return confirm('确认删除？')\">删除</a></td></tr>")
+    b.append('</tbody></table></div>')
+    # textbooks
+    b.append('<div class="card" style="margin-top:18px"><h2 class="sec">教材与参考书</h2>'
+             '<form method="post" action="/materials-admin" style="margin-bottom:14px">'
+             '<input type="hidden" name="admin" value="' + html.escape(token) + '">'
+             '<input type="hidden" name="action" value="add_textbook">'
+             '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">'
+             '<span><label>类别</label><input type="text" name="kind" placeholder="主教材" required></span>'
+             '<span><label>书名</label><input type="text" name="title" placeholder="《...》" required></span>'
+             '<span><label>说明</label><input type="text" name="note" placeholder="出版社 / 作者"></span>'
+             '<button type="submit">＋ 添加书目</button></div></form>'
+             '<table><thead><tr><th>类别</th><th>书名</th><th>说明</th><th></th></tr></thead><tbody>')
+    for i, it in enumerate(M["textbooks"]):
+        b.append("<tr><td><span class='tag'>" + html.escape(it.get("kind", ""))
+                 + "</span></td><td>" + html.escape(it.get("title", ""))
+                 + "</td><td class='en-sm'>" + html.escape(it.get("note", ""))
+                 + "</td><td><a class='dl' href='/materials-admin?admin=" + urllib.parse.quote(token)
+                 + "&amp;edit=textbook:" + str(i) + "'>编辑</a> "
+                 "<a class='del' href='/materials-admin?admin=" + urllib.parse.quote(token)
+                 + "&amp;action=delete&amp;kind=textbook&amp;idx=" + str(i)
+                 + "' onclick=\"return confirm('确认删除？')\">删除</a></td></tr>")
+    b.append('</tbody></table></div>')
+    return (ADMIN_PAGE.replace("{css}", PAGE_CSS)
+            .replace("{nav}", NAV).replace("{body}", "\n".join(b)))
+
+
+def _edit_form(M, edit, token):
+    t = html.escape(token)
+    if ":" not in edit:
+        return None
+    kind, key = edit.split(":", 1)
+    if kind in ("lecture", "section"):
+        item = next((x for x in M[kind + "s"] if x.get("slug") == key), None)
+        if not item:
+            return None
+        is_lec = kind == "lecture"
+        sec = ("<label>小节标识</label><input type='text' name='section' value='"
+               + html.escape(item.get("section", "")) + "'>") if not is_lec else ""
+        pages = ("<label>页数</label><input type='text' name='pages' value='"
+                 + html.escape(str(item.get("pages", ""))) + "'>") if is_lec else ""
+        return ('<div class="card" style="border-color:#2563eb"><h2 class="sec">编辑 '
+                + ("讲义" if is_lec else "分节PPT") + "：" + html.escape(item.get("title_zh", ""))
+                + '</h2><form method="post" action="/materials-admin" enctype="multipart/form-data">'
+                '<input type="hidden" name="admin" value="' + t + '">'
+                '<input type="hidden" name="action" value="edit">'
+                '<input type="hidden" name="kind" value="' + kind + '">'
+                '<input type="hidden" name="slug" value="' + html.escape(key) + '">'
+                + sec
+                + "<label>中文标题 *</label><input type='text' name='title_zh' value='"
+                + html.escape(item.get("title_zh", "")) + "' required>"
+                + "<label>English 标题</label><input type='text' name='title_en' value='"
+                + html.escape(item.get("title_en", "")) + "'>"
+                + pages
+                + "<label>替换文件（可选，留空则保留原文件）</label><input type='file' name='file'>"
+                "<button type='submit'>保存修改</button> "
+                "<a class='del' href='/materials-admin?admin=" + urllib.parse.quote(token)
+                + "' style='margin-left:12px'>取消</a></form></div>")
+    elif kind in ("syllabus", "textbook"):
+        if not key.isdigit():
+            return None
+        idx = int(key)
+        lst = M[kind]
+        if idx < 0 or idx >= len(lst):
+            return None
+        item = lst[idx]
+        if kind == "syllabus":
+            sel_todo = " selected" if item.get("status") != "ready" else ""
+            sel_ready = " selected" if item.get("status") == "ready" else ""
+            return ('<div class="card" style="border-color:#2563eb"><h2 class="sec">编辑章节</h2>'
+                    '<form method="post" action="/materials-admin">'
+                    '<input type="hidden" name="admin" value="' + t + '">'
+                    '<input type="hidden" name="action" value="edit">'
+                    '<input type="hidden" name="kind" value="syllabus">'
+                    '<input type="hidden" name="idx" value="' + str(idx) + '">'
+                    "<label>章节 *</label><input type='text' name='chapter' value='"
+                    + html.escape(item.get("chapter", "")) + "' required>"
+                    "<label>中文 *</label><input type='text' name='zh' value='"
+                    + html.escape(item.get("zh", "")) + "' required>"
+                    "<label>English</label><input type='text' name='en' value='"
+                    + html.escape(item.get("en", "")) + "'>"
+                    "<label>学时</label><input type='text' name='hours' value='"
+                    + html.escape(item.get("hours", "")) + "'>"
+                    "<label>学期</label><select name='term'>"
+                    + "<option value=''{sel1}>—</option>".replace("{sel1}",
+                        " selected" if item.get("term") not in ("第一学期", "第二学期") else "")
+                    + "<option value='第一学期'{s1}>第一学期</option>".replace("{s1}",
+                        " selected" if item.get("term") == "第一学期" else "")
+                    + "<option value='第二学期'{s2}>第二学期</option>".replace("{s2}",
+                        " selected" if item.get("term") == "第二学期" else "")
+                    + "</select>"
+                    "<label>状态</label><select name='status'>"
+                    "<option value='todo'" + sel_todo + ">待更新</option>"
+                    "<option value='ready'" + sel_ready + ">课件已上线</option></select>"
+                    "<button type='submit'>保存修改</button> "
+                    "<a class='del' href='/materials-admin?admin=" + urllib.parse.quote(token)
+                    + "' style='margin-left:12px'>取消</a></form></div>")
+        else:
+            return ('<div class="card" style="border-color:#2563eb"><h2 class="sec">编辑书目</h2>'
+                    '<form method="post" action="/materials-admin">'
+                    '<input type="hidden" name="admin" value="' + t + '">'
+                    '<input type="hidden" name="action" value="edit">'
+                    '<input type="hidden" name="kind" value="textbook">'
+                    '<input type="hidden" name="idx" value="' + str(idx) + '">'
+                    "<label>类别 *</label><input type='text' name='kind_v' value='"
+                    + html.escape(item.get("kind", "")) + "' required>"
+                    "<label>书名 *</label><input type='text' name='title' value='"
+                    + html.escape(item.get("title", "")) + "' required>"
+                    "<label>说明</label><input type='text' name='note' value='"
+                    + html.escape(item.get("note", "")) + "'>"
+                    "<button type='submit'>保存修改</button> "
+                    "<a class='del' href='/materials-admin?admin=" + urllib.parse.quote(token)
+                    + "' style='margin-left:12px'>取消</a></form></div>")
+    return None
 
 
 def gallery_rows(admin=False):
@@ -462,6 +788,17 @@ class Handler(BaseHTTPRequestHandler):
             self.serve_file(path.split("/")[-1])
         elif path.startswith("/delete/"):
             self.delete_item(parsed)
+        elif path == "/materials-admin":
+            qs = urllib.parse.parse_qs(parsed.query)
+            tok = qs.get("admin", [""])[0]
+            if tok != ADMIN_TOKEN:
+                self._send(200, admin_login_page(wrong=("admin" in qs)))
+                return
+            if qs.get("action", [""])[0] == "delete":
+                self._admin_delete(tok, qs)
+                return
+            edit = qs.get("edit", [""])[0] or None
+            self._send(200, admin_dashboard(tok, edit))
         else:
             self._send(404, "<h1>404 Not Found</h1>")
 
@@ -500,10 +837,19 @@ class Handler(BaseHTTPRequestHandler):
     def serve_material(self, slug):
         """Serve a course-material file.
 
-        The path comes from MATERIAL_FILES (a fixed whitelist), never from user
-        input, so directory traversal is impossible by construction.
+        The slug is resolved against materials_data.json (a fixed whitelist),
+        never from raw user input, so directory traversal is impossible.
         """
-        fpath = MATERIAL_FILES.get(slug)
+        M = load_materials()
+        entry = None
+        for it in M["lectures"] + M["sections"]:
+            if it.get("slug") == slug:
+                entry = it
+                break
+        if not entry:
+            self._send(404, "<h1>404 Not Found</h1>")
+            return
+        fpath = os.path.join(BASE_DIR, entry.get("file", ""))
         if not fpath or not os.path.isfile(fpath):
             self._send(404, "<h1>404 Not Found</h1>")
             return
@@ -561,15 +907,183 @@ class Handler(BaseHTTPRequestHandler):
         if (self.headers.get("Expect") or "").strip().lower() == "100-continue":
             self.send_response_only(100)
             self.end_headers()
-        if self.path != "/upload":
+        if self.path == "/upload":
+            try:
+                self._handle_upload()
+            except Exception:
+                import traceback
+                sys.stderr.write(traceback.format_exc())
+                self._send(500, "<h1>500 服务器错误</h1><p>上传处理失败，请重试或联系管理员。</p>")
+        elif self.path == "/materials-admin":
+            try:
+                self.admin_action()
+            except Exception:
+                import traceback
+                sys.stderr.write(traceback.format_exc())
+                self._send(500, "<h1>500 服务器错误</h1><p>保存失败，请重试。</p>")
+        else:
             self._send(404, "<h1>404</h1>")
+
+    def _admin_delete(self, token, qs):
+        kind = qs.get("kind", [""])[0]
+        M = load_materials()
+        if kind in ("lecture", "section"):
+            slug = qs.get("slug", [""])[0]
+            lst = M[kind + "s"]
+            item = next((x for x in lst if x.get("slug") == slug), None)
+            if item:
+                fp = os.path.join(BASE_DIR, item.get("file", ""))
+                if "materials_uploads" in item.get("file", "") and os.path.isfile(fp):
+                    try:
+                        os.remove(fp)
+                    except OSError:
+                        pass
+                lst.remove(item)
+                save_materials(M)
+        elif kind in ("syllabus", "textbook"):
+            try:
+                idx = int(qs.get("idx", ["-1"])[0])
+            except ValueError:
+                idx = -1
+            lst = M["textbooks"] if kind == "textbook" else M["syllabus"]
+            if 0 <= idx < len(lst):
+                lst.pop(idx)
+                save_materials(M)
+        self.send_response(302)
+        self.send_header("Location", "/materials-admin?admin=" + token)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def admin_action(self):
+        if (self.headers.get("Expect") or "").strip().lower() == "100-continue":
+            self.send_response_only(100)
+            self.end_headers()
+        ctype = self.headers.get("Content-Type", "")
+        m = re.search(r"boundary=([^;]+)", ctype)
+        if not m:
+            self._send(400, "bad request")
             return
-        try:
-            self._handle_upload()
-        except Exception:
-            import traceback
-            sys.stderr.write(traceback.format_exc())
-            self._send(500, "<h1>500 服务器错误</h1><p>上传处理失败，请重试或联系管理员。</p>")
+        boundary = m.group(1).strip().encode()
+        length = int(self.headers.get("Content-Length", "0"))
+        body = self.rfile.read(length)
+        parts = parse_multipart(body, boundary)
+        fields = {}
+        files = []
+        for p in parts:
+            if p["filename"]:
+                files.append(p)
+            elif p["name"]:
+                fields[p["name"]] = p["content"].decode("utf-8", "replace").strip()
+        if fields.get("admin") != ADMIN_TOKEN:
+            self._send(403, "<h1>403 Forbidden</h1>")
+            return
+        action = fields.get("action", "")
+        M = load_materials()
+        if action == "upload":
+            self._admin_upload(M, fields, files)
+        elif action == "edit":
+            self._admin_edit(M, fields, files)
+        elif action == "add_syllabus":
+            M["syllabus"].append({
+                "chapter": fields.get("chapter", ""),
+                "zh": fields.get("zh", ""),
+                "en": fields.get("en", ""),
+                "hours": fields.get("hours", ""),
+                "term": fields.get("term", ""),
+                "status": fields.get("status", "todo"),
+            })
+            save_materials(M)
+        elif action == "add_textbook":
+            M["textbooks"].append({
+                "kind": fields.get("kind", ""),
+                "title": fields.get("title", ""),
+                "note": fields.get("note", ""),
+            })
+            save_materials(M)
+        self.send_response(302)
+        self.send_header("Location", "/materials-admin?admin=" + ADMIN_TOKEN)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def _admin_upload(self, M, fields, files):
+        kind = fields.get("kind", "lecture")
+        f = next((p for p in files if p["filename"]), None)
+        if not f:
+            return
+        orig = sanitize_filename(f["filename"])
+        base, ext = os.path.splitext(orig)
+        stored = orig
+        i = 2
+        while os.path.exists(os.path.join(MATERIALS_UPLOAD_DIR, stored)):
+            stored = base + "_" + str(i) + ext
+            i += 1
+        with open(os.path.join(MATERIALS_UPLOAD_DIR, stored), "wb") as fh:
+            fh.write(f["content"])
+        existing = {x.get("slug") for x in (M["lectures"] + M["sections"])}
+        slug = _new_slug(os.path.splitext(base)[0], existing)
+        rel = "materials_uploads/" + stored
+        if kind == "lecture":
+            M["lectures"].append({
+                "slug": slug, "file": rel,
+                "title_zh": fields.get("title_zh", ""),
+                "title_en": fields.get("title_en", ""),
+                "pages": fields.get("pages", ""),
+            })
+        else:
+            M["sections"].append({
+                "slug": slug, "section": fields.get("section", ""),
+                "title_zh": fields.get("title_zh", ""),
+                "title_en": fields.get("title_en", ""),
+                "file": rel,
+            })
+        save_materials(M)
+
+    def _admin_edit(self, M, fields, files):
+        kind = fields.get("kind", "")
+        if kind in ("lecture", "section"):
+            slug = fields.get("slug", "")
+            item = next((x for x in M[kind + "s"] if x.get("slug") == slug), None)
+            if not item:
+                return
+            item["title_zh"] = fields.get("title_zh", item.get("title_zh", ""))
+            item["title_en"] = fields.get("title_en", item.get("title_en", ""))
+            if kind == "section":
+                item["section"] = fields.get("section", item.get("section", ""))
+            else:
+                item["pages"] = fields.get("pages", item.get("pages", ""))
+            f = next((p for p in files if p["filename"]), None)
+            if f:
+                orig = sanitize_filename(f["filename"])
+                base, ext = os.path.splitext(orig)
+                stored = orig
+                j = 2
+                while os.path.exists(os.path.join(MATERIALS_UPLOAD_DIR, stored)):
+                    stored = base + "_" + str(j) + ext
+                    j += 1
+                with open(os.path.join(MATERIALS_UPLOAD_DIR, stored), "wb") as fh:
+                    fh.write(f["content"])
+                item["file"] = "materials_uploads/" + stored
+            save_materials(M)
+        elif kind in ("syllabus", "textbook"):
+            try:
+                idx = int(fields.get("idx", "-1"))
+            except ValueError:
+                return
+            lst = M[kind]
+            if not (0 <= idx < len(lst)):
+                return
+            if kind == "syllabus":
+                lst[idx]["chapter"] = fields.get("chapter", lst[idx].get("chapter", ""))
+                lst[idx]["zh"] = fields.get("zh", lst[idx].get("zh", ""))
+                lst[idx]["en"] = fields.get("en", lst[idx].get("en", ""))
+                lst[idx]["hours"] = fields.get("hours", lst[idx].get("hours", ""))
+                lst[idx]["term"] = fields.get("term", lst[idx].get("term", ""))
+                lst[idx]["status"] = fields.get("status", lst[idx].get("status", "todo"))
+            else:
+                lst[idx]["kind"] = fields.get("kind_v", lst[idx].get("kind", ""))
+                lst[idx]["title"] = fields.get("title", lst[idx].get("title", ""))
+                lst[idx]["note"] = fields.get("note", lst[idx].get("note", ""))
+            save_materials(M)
 
     def _handle_upload(self):
         ctype = self.headers.get("Content-Type", "")
