@@ -345,6 +345,13 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_POST(self):
+        # Some clients/proxies (curl, and Render's edge proxy) send
+        # "Expect: 100-continue" and wait for a 100 response BEFORE sending the
+        # request body. If we stay silent, we wait for the body while they wait
+        # for the 100 -> deadlock / read timeout. Always acknowledge it first.
+        if (self.headers.get("Expect") or "").strip().lower() == "100-continue":
+            self.send_response_only(100)
+            self.end_headers()
         if self.path != "/upload":
             self._send(404, "<h1>404</h1>")
             return
