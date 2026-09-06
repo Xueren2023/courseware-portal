@@ -1,0 +1,809 @@
+\documentclass[UTF8,10pt]{beamer}
+\usepackage[UTF8]{ctex}
+\usetheme{Madrid}
+\usecolortheme{default}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows.meta,positioning,calc,decorations.pathreplacing}
+\setbeamertemplate{theorems}[numbered]
+\hypersetup{colorlinks=true,linkcolor=blue,urlcolor=blue}
+
+\title[Chapter 2: Limits (cont.)]{Chapter 2: Limits (Continued)}
+\subtitle{Infinitesimals \cdot Limit Laws \cdot Order of Infinitesimals}
+\author{Advanced Mathematics \\ (Tongji University, 8th Ed.)}
+\institute{Section 4 / 5 / 7}
+\date{}
+
+% ============================================================
+\begin{document}
+
+% ============================================================
+% TITLE PAGE
+% ============================================================
+\begin{frame}
+\titlepage
+\end{frame}
+
+% ============================================================
+% TABLE OF CONTENTS
+% ============================================================
+\begin{frame}{Outline}
+\tableofcontents
+\end{frame}
+
+% ############################################################
+% SECTION 4: INFINITESIMALS AND INFINITIES
+% ############################################################
+\section{Section 4: Infinitesimals and Infinities}
+
+% --- Title slide ---
+\begin{frame}{}
+\centering
+\includegraphics[height=0.75\textheight,keepaspectratio]{images_cont/S1_4_s01.png}
+\end{frame}
+
+% --- I. Infinitesimal: Definition ---
+\begin{frame}{I. Infinitesimal --- Definition}
+\pause
+\begin{definition}[Infinitesimal]
+If $\displaystyle \lim_{x \to x_0} f(x) = 0$ (or $x \to \infty$), then we say that
+$f(x)$ is an \alert{infinitesimal} as $x \to x_0$ (or $x \to \infty$).
+\end{definition}
+\pause
+\vspace{1em}
+\textbf{Examples:}
+\begin{itemize}
+    \item<4-> $\displaystyle \lim_{x \to 1} (x-1) = 0$, so $x-1$ is an infinitesimal as $x \to 1$.
+    \item<5-> $\displaystyle \lim_{x \to \infty} \frac{1}{x} = 0$, so $\dfrac{1}{x}$ is an infinitesimal as $x \to \infty$.
+    \item<6-> $\displaystyle \lim_{x \to -\infty} \frac{1}{\sqrt{1-x}} = 0$, so $\dfrac{1}{\sqrt{1-x}}$ is an infinitesimal as $x \to -\infty$.
+\end{itemize}
+\end{frame}
+
+% --- Note on constant ---
+\begin{frame}{I. Infinitesimal --- Important Note}
+\begin{alertblock}{Note}
+Except for $0$, \textbf{no matter how small a constant is}, it is \emph{not} an infinitesimal!
+\end{alertblock}
+\pause
+\vspace{0.5em}
+\textbf{Reason:}
+\[
+\lim_{x \to x_0} c = 0 \quad \Longleftrightarrow \quad \forall\,\varepsilon > 0,\; \exists\,\delta > 0,
+\; \text{when } 0 < |x-x_0| < \delta:\; |c - 0| < \varepsilon
+\]
+\pause
+Clearly this can hold only when $c = 0$.
+\end{frame}
+
+% --- Theorem 1: Infinitesimal and limit relation ---
+\begin{frame}{Theorem 1: Relation Between Infinitesimal and Limit}
+\begin{theorem}[Infinitesimal--Limit Relation]
+\[
+\lim_{x \to x_0} f(x) = A \;\Longleftrightarrow\; f(x) = A + \alpha(x),
+\]
+where $\alpha(x)$ is an infinitesimal as $x \to x_0$.
+\end{theorem}
+\pause
+\textbf{Proof sketch:}
+\[
+\Longleftrightarrow\; \forall\,\varepsilon>0,\; \exists\,\delta>0,\;
+\text{when } 0<|x-x_0|<\delta:\; |f(x)-A|<\varepsilon
+\]
+\pause
+\[
+\Longleftrightarrow\; \frac{\alpha(x)=f(x)-A}{\displaystyle\lim_{x\to x_0}\alpha(x)=0}
+\]
+\pause
+\vspace{0.3em}
+\small The same argument applies to other limiting processes ($x\to\infty$, etc.).
+\end{frame}
+
+% --- II. Infinity: Definition ---
+\begin{frame}{II. Infinity --- Definition}
+\begin{definition}[Infinity]
+For any given $M > 0$, if there always exists $X > 0$ such that whenever $|x| > X$ (or $0<|x-x_0|<\delta$), we have
+\[
+|f(x)| > M,
+\]
+then we say $f(x)$ is an \alert{infinity} as $x \to \infty$ (or $x \to x_0$), denoted by
+$\displaystyle \lim_{x\to x_0} f(x) = \infty$ (or $\displaystyle \lim_{x\to\infty} f(x) = \infty$).
+\end{definition}
+\pause
+\vspace{0.3em}
+\small If in the definition we require $f(x) > M$ (or $f(x) < -M$), then we denote
+$\displaystyle \lim f(x) = +\infty$ (or $-\infty$).
+\end{frame}
+
+% --- Notes on infinity ---
+\begin{frame}{II. Infinity --- Notes}
+\begin{block}{Important Notes}
+\begin{enumerate}
+    \item<1-> ``Infinity'' is \textbf{not} a very large number; it describes a certain \emph{state} of a function's behavior.
+    \item<2-> If $f(x)$ is infinity, then $f(x)$ must be \textbf{unbounded}.\\[0.3em]
+          \textcolor{red}{But the converse is not true!}
+\end{enumerate}
+\end{block}
+\pause\pause
+\vspace{0.3em}
+\textbf{Counterexample:} $f(x) = x\cos x$, $x \in (-\infty, +\infty)$.
+\pause
+\begin{itemize}
+    \item $f(2n\pi) = 2n\pi \to \infty$ as $n \to \infty$
+    \item But $f(\frac{\pi}{2}+n\pi) = 0$
+\end{itemize}
+\pause
+Therefore $x \to \infty$ does not make $f(x)$ an infinity!
+\end{frame}
+
+% --- Example: vertical asymptote ---
+\begin{frame}{Example: Vertical Asymptote}
+\begin{example}
+Prove that $\displaystyle \lim_{x \to 1}\frac{1}{x-1} = \infty$.
+\end{example}
+\pause
+\textbf{Proof:} For any $M > 0$, we need $\left|\dfrac{1}{x-1}\right| > M$, i.e.\ $|x-1| < \dfrac{1}{M}$.
+\pause
+Take $\delta = \dfrac{1}{M}$; then for all $x$ satisfying $0 < |x-1| < \delta$:
+\[
+\left|\frac{1}{x-1}\right| > M
+\]
+\pause
+Therefore $\displaystyle \lim_{x \to 1}\frac{1}{x-1} = \infty$. \hfill $\square$
+\pause
+\vspace{0.3em}
+\begin{alertblock}{Note}
+If $\displaystyle \lim_{x \to x_0} f(x) = \infty$, then the line $x = x_0$ is called a
+\textbf{vertical asymptote} of the curve $y = f(x)$.
+\end{alertblock}
+\end{frame}
+
+% --- Theorem 2: Reciprocal relation ---
+\begin{frame}{III. Relation Between Infinitesimals and Infinities}
+\begin{theorem}[Reciprocal Relation]
+In the same limiting process of the independent variable:
+\begin{enumerate}
+    \item If $f(x)$ is an infinity, then $\dfrac{1}{f(x)}$ is an infinitesimal.
+    \item If $f(x)$ is an infinitesimal and $f(x) \neq 0$, then $\dfrac{1}{f(x)}$ is an infinity.
+\end{enumerate}
+\end{theorem}
+\pause
+\vspace{0.5em}
+\begin{block}{Note}
+According to this theorem, questions about infinities can always be transformed into
+questions about infinitesimals for discussion.
+\end{block}
+\end{frame}
+
+% --- Section 4 Summary ---
+\begin{frame}{Section 4 Summary}
+\begin{block}{Summary}
+\begin{enumerate}
+    \item Definitions of \textbf{infinitesimals} and \textbf{infinities}.
+    \item \textbf{Theorem 1}: Relation between infinitesimal and function limit:\\
+          $\lim f(x) = A \Leftrightarrow f(x) = A + \alpha$ where $\alpha$ is infinitesimal.
+    \item \textbf{Theorem 2}: Reciprocal relation between infinitesimals and infinities.
+    \item If $\lim_{x\to x_0} f(x) = \infty$, then $x=x_0$ is a \textbf{vertical asymptote}.
+\end{enumerate}
+\end{block}
+\end{frame}
+
+
+% ############################################################
+% SECTION 5: LIMIT LAWS (OPERATIONAL RULES)
+% ############################################################
+\section{Section 5: Limit Laws (Operational Rules)}
+
+% --- Title slide ---
+\begin{frame}{}
+\centering
+\includegraphics[height=0.75\textheight,keepaspectratio]{images_cont/S1_5_s01.png}
+\end{frame}
+
+% --- I. Infinitesimal operations: Thm 1 (sum) ---
+\begin{frame}{I. Operations on Infinitesimals --- Sum Rule}
+\begin{theorem}
+The sum of finitely many infinitesimals is still an infinitesimal.
+\end{theorem}
+\pause
+\textbf{Proof:} Consider two infinitesimals $\alpha$, $\beta$ as $x \to x_0$.
+\pause
+$\forall\,\varepsilon > 0$, when $0 < |x-x_0| < \delta_1$: $|\alpha| < \dfrac{\varepsilon}{2}$
+\pause
+
+When $0 < |x-x_0| < \delta_2$: $|\beta| < \dfrac{\varepsilon}{2}$
+\pause
+\vspace{0.3em}
+
+Take $\delta = \min\{\delta_1, \delta_2\}$, then when $0 < |x-x_0| < \delta$:
+\[
+|\alpha+\beta| \le |\alpha|+|\beta| < \frac{\varepsilon}{2}+\frac{\varepsilon}{2} = \varepsilon
+\]
+\pause
+Hence $\displaystyle \lim_{x\to x_0} (\alpha+\beta) = 0$, i.e.\ $\alpha+\beta$ is infinitesimal.
+\end{frame}
+
+% --- Infinite sum counterexample ---
+\begin{frame}{I. Operations on Infinitesimals --- Caution}
+\begin{alertblock}{Caution}
+An \textbf{infinite sum} of infinitesimals is \textbf{not necessarily} an infinitesimal!
+\end{alertblock}
+\pause
+\vspace{0.5em}
+\textbf{Counterexample:}
+\[
+\lim_{n\to\infty} n\!\left( \frac{1}{n^2+\pi} + \frac{1}{n^2+2\pi} + \cdots + \frac{1}{n^2+n\pi} \right) = 1
+\]
+\pause
+\vspace{0.3em}
+\small (Each term is infinitesimal, but there are infinitely many of them.)
+\end{frame}
+
+% --- Thm 2: Bounded * infinitesimal ---
+\begin{frame}{Theorem 2: Bounded Function Times Infinitesimal}
+\begin{theorem}
+The product of a \textbf{bounded function} and an \textbf{infinitesimal} is an infinitesimal.
+\end{theorem}
+\pause
+\textbf{Proof:} Let $|u| \le M$ for $x \in \mathring{U}(x_0, \delta_1)$, and $\displaystyle \lim_{x\to x_0}\alpha = 0$.
+\pause
+$\forall\,\varepsilon > 0$, when $x \in \mathring{U}(x_0, \delta_2)$: $|\alpha| \le \dfrac{\varepsilon}{M}$
+\pause
+\vspace{0.3em}
+
+Take $\delta = \min\{\delta_1, \delta_2\}$, then when $x \in \mathring{U}(x_0, \delta)$:
+\[
+|u\alpha| = |u|\cdot|\alpha| \le M \cdot \frac{\varepsilon}{M} = \varepsilon
+\]
+\pause
+Hence $\displaystyle \lim_{x\to x_0} u\alpha = 0$, i.e.\ $u\alpha$ is infinitesimal. \hfill $\square$
+\pause
+\vspace{0.3em}
+\begin{corollary}
+\begin{enumerate}
+    \item A \textbf{constant} times an infinitesimal is an infinitesimal.
+    \item The product of \textbf{finitely many} infinitesimals is an infinitesimal.
+\end{enumerate}
+\end{corollary}
+\end{frame}
+
+% --- Example 1: sin x / x ---
+\begin{frame}{Example 1: $\displaystyle \lim_{x\to\infty}\frac{\sin x}{x}$}
+\begin{example}
+Find $\displaystyle \lim_{x\to\infty}\frac{\sin x}{x}$.
+\end{example}
+\pause
+\textbf{Solution:} Since $|\sin x| \le 1$ (bounded) and $\displaystyle \lim_{x\to\infty}\frac{1}{x}=0$ (infinitesimal),
+\pause
+by Theorem~2:
+\[
+\boxed{\lim_{x\to\infty}\frac{\sin x}{x} = 0}
+\]
+\pause
+\vspace{0.3em}
+\begin{block}{Remark}
+$y = 0$ is a horizontal asymptote of $y = \dfrac{\sin x}{x}$.
+\end{block}
+\end{frame}
+
+% --- II. Four arithmetic operations: Thm 3 (sum/difference) ---
+\begin{frame}{II. Four Arithmetic Operations on Limits --- Sum/Difference}
+\begin{theorem}
+If $\displaystyle \lim_{x\to x_0} f(x) = A$ and $\displaystyle \lim_{x\to x_0} g(x) = B$, then
+\[
+\lim_{x\to x_0} [f(x) \pm g(x)] = \lim_{x\to x_0} f(x) \pm \lim_{x\to x_0} g(x) = A \pm B
+\]
+\end{theorem}
+\pause
+\textbf{Proof:} Since $\lim f(x) = A$, $\lim g(x) = B$, we have
+\[
+f(x) = A + \alpha, \quad g(x) = B + \beta
+\]
+where $\alpha, \beta$ are infinitesimals.
+\pause
+Thus
+\[
+f(x) \pm g(x) = (A+\alpha) \pm (B+\beta) = (A\pm B) + (\alpha \pm \beta)
+\]
+\pause
+By Theorem~1, $\alpha \pm \beta$ is also infinitesimal, hence the conclusion holds. \hfill $\square$
+\end{frame}
+
+% --- Corollary: preservation of inequality ---
+\begin{frame}{Corollary: Preservation of Inequality}
+\begin{corollary}
+If $\displaystyle \lim_{x\to x_0} f(x) = A$, $\displaystyle \lim_{x\to x_0} g(x) = B$, and $f(x) \ge g(x)$, then $A \ge B$.
+\end{corollary}
+\pause
+\textbf{Hint:} Let $\phi(x) = f(x) - g(x) \ge 0$. By Theorem~3:
+\[
+\lim_{x\to x_0} \phi(x) = \lim[f(x)-g(x)] = \lim f(x) - \lim g(x) = A - B \ge 0
+\]
+\pause
+Hence $A \ge B$.
+\pause
+\vspace{0.5em}
+\begin{block}{Note}
+Theorem~3 can be generalized to the case of \textbf{finitely many functions} (addition/subtraction).
+\end{block}
+\end{frame}
+
+% --- Theorem 4: Product rule ---
+\begin{frame}{Theorem 4: Product Rule}
+\begin{theorem}
+If $\displaystyle \lim_{x\to x_0} f(x) = A$ and $\displaystyle \lim_{x\to x_0} g(x) = B$, then
+\[
+\lim_{x\to x_0} [f(x)\,g(x)] = \lim_{x\to x_0} f(x) \cdot \lim_{x\to x_0} g(x) = AB
+\]
+\end{theorem}
+\pause
+\textbf{Hint:} Use the limit-infinitesimal relation and Theorem~2.
+\pause
+\vspace{0.3em}
+\begin{corollary}
+\begin{enumerate}
+    \item $\displaystyle \lim[C\cdot f(x)] = C \cdot \lim f(x)$ \hfill ($C$ = constant)
+    \item $\displaystyle \lim [f(x)]^n = [\lim f(x)]^n$ \hfill ($n$ = positive integer)
+\end{enumerate}
+\end{corollary}
+\pause
+\vspace{0.3em}
+\textbf{Example 2:} For polynomial $P_n(x) = a_0 + a_1 x + \cdots + a_n x^n$:
+\[
+\lim_{x\to x_0} P_n(x) = P_n(x_0)
+\]
+\end{frame}
+
+% --- Theorem 5: Quotient rule ---
+\begin{frame}{Theorem 5: Quotient Rule}
+\begin{theorem}
+If $\displaystyle \lim_{x\to x_0} f(x) = A$, $\displaystyle \lim_{x\to x_0} g(x) = B$, and $B \neq 0$, then
+\[
+\lim_{x\to x_0} \frac{f(x)}{g(x)} = \frac{\lim f(x)}{\lim g(x)} = \frac{A}{B}
+\]
+\end{theorem}
+\pause
+\textbf{Proof idea:} Write $f(x) = A+\alpha$, $g(x) = B+\beta$ where $\alpha,\beta$ are infinitesimal.
+Let $\gamma = \dfrac{f(x)}{g(x)} - \dfrac{A}{B} = \dfrac{B\alpha - A\beta}{B(B+\beta)}$.
+\pause
+Here the numerator is infinitesimal, denominator $\to B^2 \neq 0$ (bounded away from 0),
+so $\gamma$ is infinitesimal. Hence $\displaystyle \lim \frac{f(x)}{g(x)} = \frac{A}{B}$. \hfill $\square$
+
+\small (See textbook p.44 for details.)
+\end{frame}
+
+% --- Theorem 6: Sequence version ---
+\begin{frame}{Theorem 6: Limit Laws for Sequences}
+\begin{theorem}
+If $\displaystyle \lim_{n\to\infty} x_n = A$ and $\displaystyle \lim_{n\to\infty} y_n = B$, then:
+\begin{enumerate}
+    \item $\displaystyle \lim_{n\to\infty} (x_n \pm y_n) = A \pm B$
+    \item $\displaystyle \lim_{n\to\infty} x_n y_n = AB$
+    \item If $y_n \neq 0$ and $B \neq 0$: \; $\displaystyle \lim_{n\to\infty} \frac{x_n}{y_n} = \frac{A}{B}$
+\end{enumerate}
+\end{theorem}
+\pause
+\textbf{Hint:} Since a sequence is a special kind of function, these follow directly from
+Theorems~3, 4, 5.
+\end{frame}
+
+% --- Example 3: Rational function ---
+\begin{frame}{Example 3: Limit of a Rational Function}
+\begin{example}
+Let $\displaystyle R(x) = \frac{P(x)}{Q(x)}$ where $P(x), Q(x)$ are polynomials.
+If $Q(x_0) \neq 0$, prove that $\displaystyle \lim_{x\to x_0} R(x) = R(x_0)$.
+\end{example}
+\pause
+\textbf{Proof:}
+\[
+\lim_{x\to x_0} R(x) = \frac{\lim_{x\to x_0} P(x)}{\lim_{x\to x_0} Q(x)} = \frac{P(x_0)}{Q(x_0)} = R(x_0)
+\] \hfill $\square$
+\pause
+\vspace{0.5em}
+\begin{alertblock}{Note}
+If $Q(x_0) = 0$, we \textbf{cannot} directly use the quotient rule!
+\end{alertblock}
+\end{frame}
+
+% --- Example 4: Factor and cancel ---
+\begin{frame}{Example 4: Factor and Cancel}
+\begin{example}
+Find $\displaystyle \lim_{x\to 3} \frac{x^2-4x+3}{x^2-9}$.
+\end{example}
+\pause
+\textbf{Solution:} Factor numerator and denominator:
+\[
+\lim_{x\to 3} \frac{(x-3)(x-1)}{(x-3)(x+3)} = \lim_{x\to 3} \frac{x-1}{x+3} = \frac{2}{6} = \frac{1}{3}
+\]
+\pause
+\vspace{0.3em}
+\begin{block}{Key Point}
+$x=3$ makes the denominator zero, but after canceling the common factor $(x-3)$, the limit exists.
+\end{block}
+\end{frame}
+
+% --- Example 5: Denominator → 0, numerator ≠ 0 ---
+\begin{frame}{Example 5: Denominator $\to$ 0, Numerator $\neq$ 0}
+\begin{example}
+Find $\displaystyle \lim_{x\to 1} \frac{2x-3}{x^2-5x+4}$.
+\end{example}
+\pause
+\textbf{Solution:} At $x=1$: denominator $= 1-5+4 = 0$, but numerator $= 2-3 = -1 \neq 0$.
+\[
+\lim_{x\to 1} \frac{x^2-5x+4}{2x-3} = \frac{1-5+4}{2-3} = \frac{0}{-1} = 0
+\]
+\pause
+Therefore:
+\[
+\boxed{\lim_{x\to 1} \frac{2x-3}{x^2-5x+4} = \infty}
+\]
+\end{frame}
+
+% --- Example 6: "Grab the leading term" ---
+\begin{frame}{Example 6: Limit at Infinity --- ``Grab the Leading Term''}
+\begin{example}
+Find $\displaystyle \lim_{x\to\infty} \frac{4x^2-3x+9}{5x^2+2x-1}$.
+\end{example}
+\pause
+\textbf{Solution:} As $x \to \infty$, both numerator and denominator $\to \infty$.\\
+Divide both by the highest power $x^2$:
+\[
+\lim_{x\to\infty} \frac{4 - \frac{3}{x} + \frac{9}{x^2}}{5 + \frac{2}{x} - \frac{1}{x^2}}
+= \frac{4 + 0 + 0}{5 + 0 - 0} = \boxed{\frac{4}{5}}
+\]
+\pause
+\vspace{0.3em}
+\begin{center}
+\fbox{\textbf{``Grab the leading term''}}
+\end{center}
+\end{frame}
+
+% --- General result for rational functions at ∞ ---
+\begin{frame}{General Result: Rational Functions at Infinity}
+For $a_0 b_0 \neq 0$, $m,n$ non-negative integers:
+\[
+\lim_{x\to\infty} \frac{a_0 x^m + a_1 x^{m-1} + \cdots + a_m}{b_0 x^n + b_1 x^{n-1} + \cdots + b_n}
+=
+\begin{cases}
+\dfrac{a_0}{b_0}, & \text{if } n = m \quad \text{(e.g., Ex.~6)} \\[0.8em]
+0, & \text{if } n > m \quad \text{(e.g., Ex.~5)} \\[0.5em]
+\infty, & \text{if } n < m \quad \text{(see Ex.~7 below)}
+\end{cases}
+\]
+\end{frame}
+
+% --- III. Composite function limit: Theorem 7 ---
+\begin{frame}{III. Composite Function Limit --- Theorem 7}
+\begin{theorem}
+Let $\displaystyle \lim_{x\to x_0} \phi(x) = a$, and suppose $\phi(x) \neq a$ when $0 < |x-x_0| < \delta_1$. Also let $\displaystyle \lim_{u\to a} f(u) = A$. Then:
+\[
+\lim_{x\to x_0} f[\phi(x)] = A
+\]
+\end{theorem}
+\pause
+\textbf{Proof:} $\forall\,\varepsilon > 0$, $\exists\,\eta > 0$: when $0 < |u-a| < \eta$: $|f(u)-A| < \varepsilon$
+\pause
+Since $\lim\limits_{x\to x_0} \phi(x) = a$, for this $\eta > 0$, $\exists\,\delta_2 > 0$:
+when $0 < |x-x_0| < \delta_2$: $|\phi(x)-a| < \eta$
+\pause
+Take $\delta = \min\{\delta_1, \delta_2\}$, then when $0 < |x-x_0| < \delta$:
+$0 < |\phi(x)-a| = |u-a| < \eta$
+\pause
+Hence $|f[\phi(x)] - A| = |f(u) - A| < \varepsilon$. \hfill $\square$
+\end{frame}
+
+% --- Theorem 7 extension ---
+\begin{frame}{Theorem 7 --- Extension}
+\begin{block}{Extension}
+If $\displaystyle \lim_{x\to x_0} \phi(x) = \infty$, then similarly:
+\[
+\lim_{x\to x_0} f[\phi(x)] = \lim_{u\to\infty} f(u) = A
+\]
+\end{block}
+\pause
+\vspace{0.5em}
+This theorem allows us to compute limits of composite functions via substitution.
+\end{frame}
+
+% --- Example 7: Composite with sqrt ---
+\begin{frame}{Example 7: Composite Function Limit}
+\begin{example}
+Find $\displaystyle \lim_{x\to 3} \sqrt{\frac{x-3}{x^2-9}}$.
+\end{example}
+\pause
+\textbf{Solution:} Let $u = \dfrac{x-3}{x^2-9}$. From Example~3, we know
+$\displaystyle \lim_{x\to 3} u = \frac{1}{6}$.
+\pause
+By Theorem~7 (composite limit):
+\[
+\lim_{u\to \frac{1}{6}} \sqrt{u} = \sqrt{\frac{1}{6}} = \frac{\sqrt{6}}{6}
+\]
+\pause
+Hence:
+\[
+\boxed{\lim_{x\to 3} \sqrt{\frac{x-3}{x^2-9}} = \frac{\sqrt{6}}{6}}
+\]
+\end{frame}
+
+% --- Example 8: Two methods ---
+\begin{frame}{Example 8: Two Methods}
+\begin{example}
+Find $\displaystyle \lim_{x\to 1} \frac{x-1}{\sqrt{x}-1}$.
+\end{example}
+\pause
+\textbf{Method 1 (substitution):} Let $u = \sqrt{x}$, then $\lim\limits_{x\to 1} u = 1$.
+\[
+\frac{x-1}{\sqrt{x}-1} = \frac{u^2-1}{u-1} = u+1 \;\Longrightarrow\; \lim_{u\to 1}(u+1) = 2
+\]
+\pause
+\textbf{Method 2 (rationalization):}
+\[
+\lim_{x\to 1} \frac{(x-1)(\sqrt{x}+1)}{(\sqrt{x}-1)(\sqrt{x}+1)} = \lim_{x\to 1} (\sqrt{x}+1) = 2
+\]
+\pause
+\[
+\boxed{\lim_{x\to 1} \frac{x-1}{\sqrt{x}-1} = 2}
+\]
+\end{frame}
+
+% --- Section 5 Summary ---
+\begin{frame}{Section 5 Summary}
+\begin{block}{Limit Laws (Operational Rules)}
+\begin{columns}
+\column{0.55\textwidth}
+\begin{enumerate}
+    \item \textbf{Infinitesimal operations}\\
+          (Th1: sum; Th2: bounded $\times$ infinitesimal)
+    \item \textbf{Four arithmetic rules}\\
+          (Th3: $\pm$; Th4: $\times$; Th5: $\div$)
+    \item \textbf{Composite function limit}\\
+          (Th7: substitution)
+\end{enumerate}
+\column{0.42\textwidth}
+\textbf{Methods for finding limits:}
+\begin{enumerate}
+    \item $x \to x_0$: direct substitution (if denom.$\neq 0$); factor \& cancel common factor
+    \item $x \to \infty$: divide by highest power (``grab the leading term'')
+    \item Composite: substitute inner variable
+\end{enumerate}
+\end{columns}
+\end{block}
+\end{frame}
+
+
+% ############################################################
+% SECTION 7: ORDER OF INFINITESIMALS
+% ############################################################
+\section{Section 7: Comparison of Infinitesimals}
+
+% --- Title slide ---
+\begin{frame}{}
+\centering
+\includegraphics[height=0.65\textheight,keepaspectratio]{images_cont/S1_7_s01.png}
+\end{frame}
+
+% --- Motivation: different rates ---
+\begin{frame}{Motivation: Different Rates of Tending to Zero}
+As $x \to 0$, each of $3x$, $x^2$, $\sin x$ is an infinitesimal, but:
+\pause
+\[
+\lim_{x\to 0} \frac{x^2}{3x} = 0, \qquad
+\lim_{x\to 0} \frac{\sin x}{3x} = \frac{1}{3}, \qquad
+\lim_{x\to 0} \frac{\sin x}{x^2} = \infty
+\]
+\pause
+\vspace{0.5em}
+\begin{center}
+\alert{Infinitesimals tend to zero at \textbf{different rates}!}
+\end{center}
+\end{frame}
+
+% --- Definition: comparison of infinitesimals ---
+\begin{frame}{Definition: Comparison of Infinitesimals}
+Let $\alpha$, $\beta$ be infinitesimals in the same limiting process.
+\pause
+\begin{description}
+    \item[$\lim\frac{\beta}{\alpha}=0$:] $\beta$ is a \alert{higher-order} infinitesimal than $\alpha$,\\
+          denoted $\beta = o(\alpha)$.
+    \pause
+    \item[$\lim\frac{\beta}{\alpha}=\infty$:] $\beta$ is a \alert{lower-order} infinitesimal than $\alpha$.
+    \pause
+    \item[$\lim\frac{\beta}{\alpha}=C\neq 0$:] $\beta$ and $\alpha$ are \alert{same-order} infinitesimals.
+    \pause
+    \item[$\lim\frac{\beta}{\alpha^k}=C\neq 0$:] $\beta$ is a \alert{$k$-th order} infinitesimal w.r.t.\ $\alpha$.
+    \pause
+    \item[$\lim\frac{\beta}{\alpha}=1$:] $\beta$ and $\alpha$ are \alert{equivalent} infinitesimals,\\
+          denoted $\alpha \sim \beta$ or $\beta \sim \alpha$.
+\end{description}
+\end{frame}
+
+% --- Common equivalent infinitesimals ---
+\begin{frame}{Common Equivalent Infinitesimals (as $x \to 0$)}
+\begin{block}{Standard Equivalents}
+\begin{align*}
+&\sin x \sim x, &\quad &\tan x \sim x, &\quad &\arcsin x \sim x, \\[0.3em]
+&1-\cos x \sim \tfrac{1}{2}x^2, &\quad &\sqrt[n]{1+x}-1 \sim \tfrac{1}{n}x
+\end{align*}
+\end{block}
+\pause
+\vspace{0.3em}
+\textbf{Examples:}
+\begin{itemize}
+    \item<2-> $x^3 = o(6x^2)$ as $x \to 0$ \quad (higher order)
+    \item<3-> $\arcsin x \sim x$ as $x \to 0$ \quad (equivalent)
+    \item<4-> $1-\cos x \sim \frac{1}{2}x^2$ as $x \to 0$ \quad (2nd order)
+\end{itemize}
+\end{frame}
+
+% --- Example 1: nth root equivalence ---
+\begin{frame}{Example 1: Proving Equivalence}
+\begin{example}
+Prove: as $x \to 0$, \; $\displaystyle \sqrt[n]{1+x}-1 \sim \frac{1}{n}x$.
+\end{example}
+\pause
+\textbf{Proof:}
+\[
+\lim_{x\to 0} \frac{\sqrt[n]{1+x}-1}{\frac{1}{n}x}
+\]
+\pause
+Use $a^n - b^n = (a-b)(a^{n-1} + a^{n-2}b + \cdots + b^{n-1})$:
+\pause
+\[
+= \lim_{x\to 0} \frac{(\sqrt[n]{1+x})^n - 1}{\frac{1}{n}x\bigl[(\sqrt[n]{1+x})^{n-1}+(\sqrt[n]{1+x})^{n-2}+\cdots+1\bigr]}
+\]
+\pause
+\[
+= \frac{n}{1+1+\cdots+1} = \frac{n}{n} = 1
+\]
+\pause
+Hence $\displaystyle \sqrt[n]{1+x}-1 \sim \frac{1}{n}x$ as $x \to 0$. \hfill $\square$
+\end{frame}
+
+% --- Theorem 1: α ~ β ⇔ β = α + o(α) ---
+\begin{frame}{Theorem 1: Characterization of Equivalence}
+\begin{theorem}
+\[
+\alpha \sim \beta \;\Longleftrightarrow\; \beta = \alpha + o(\alpha)
+\]
+\end{theorem}
+\pause
+\textbf{Proof:}
+\[
+\alpha \sim \beta \;\Longleftrightarrow\; \lim\frac{\beta}{\alpha} = 1
+\]
+\pause
+\[
+\Longleftrightarrow\; \lim\left(\frac{\beta}{\alpha}-1\right) = 0,
+\text{ i.e. } \lim\frac{\beta-\alpha}{\alpha} = 0
+\]
+\pause
+\[
+\Longleftrightarrow\; \beta - \alpha = o(\alpha),
+\text{ i.e. } \beta = \alpha + o(\alpha) \quad \square
+\]
+\pause
+\vspace{0.3em}
+\textbf{Example:} As $x \to 0$: $\sin x = x + o(x)$, \; $\tan x = x + o(x)$.
+\end{frame}
+
+% --- Theorem 2: Substitution rule ---
+\begin{frame}{Theorem 2: Equivalence Substitution Rule}
+\begin{theorem}
+Let $\alpha \sim \alpha'$, $\beta \sim \beta'$, and assume $\displaystyle \lim\frac{\beta'}{\alpha'}$ exists. Then:
+\[
+\lim\frac{\beta}{\alpha} = \lim\frac{\beta'}{\alpha'}
+\]
+\end{theorem}
+\pause
+\textbf{Proof:}
+\[
+\lim\frac{\beta}{\alpha} = \lim\left(\frac{\beta}{\beta'} \cdot \frac{\beta'}{\alpha'} \cdot \frac{\alpha'}{\alpha}\right)
+= \lim\frac{\beta}{\beta'} \cdot \lim\frac{\beta'}{\alpha'} \cdot \lim\frac{\alpha'}{\alpha}
+= \lim\frac{\beta'}{\alpha'}
+\] \hfill $\square$
+\pause
+\vspace{0.3em}
+\textbf{Example:} $\displaystyle \lim_{x\to 0} \frac{\tan 2x}{\sin 5x} = \lim_{x\to 0} \frac{2x}{5x} = \frac{2}{5}$
+\end{frame}
+
+% --- Notes on using equivalence ---
+\begin{frame}{Notes on Using Equivalent Infinitesimals}
+For the same limiting process, under multiplication/division, equivalent infinitesimals can be freely substituted to simplify calculations.
+\pause
+\vspace{0.5em}
+\textbf{(1) Sum/difference --- take care!}
+If $\alpha \sim \alpha'$, then $\alpha \pm \beta \sim \alpha' \pm \beta$ only holds at large scale.
+\[
+\text{e.g., } \lim_{x\to 0} \frac{\sin x}{x^3+3x} = \lim_{x\to 0} \frac{x}{3x} = \frac{1}{3}
+\]
+\pause
+\vspace{0.3em}
+\textbf{(2) Difference replacement requires caution:}\\
+If $\alpha \sim \alpha'$, $\beta \sim \beta'$, but $\alpha$ and $\beta$ are \textbf{not equivalent},
+then $\alpha - \beta \sim \alpha' - \beta'$, and $\displaystyle \lim\frac{\alpha-\beta}{\gamma} = \lim\frac{\alpha'-\beta'}{\gamma}$.
+\pause
+\[
+\text{e.g., } \lim_{x\to 0} \frac{\tan 2x - \sin x}{\sqrt{1+x}-1} = \lim_{x\to 0} \frac{2x-x}{\frac{1}{2}x} = 2
+\]
+\pause
+\small But if $\alpha \sim \beta$, this conclusion may \textbf{fail}!
+\end{frame}
+
+% --- Note (3): Product replacement ---
+\begin{frame}{Note (3): Product Replacement Rule}
+If $\alpha \sim \beta$ and $\varphi(x)$ has a finite limit (or is bounded), then:
+\[
+\lim \alpha\,\varphi(x) = \lim \beta\,\varphi(x)
+\]
+\pause
+\textbf{Example:} $\displaystyle \lim_{x\to 0} \arcsin x \cdot \sin\frac{1}{x} = \lim_{x\to 0} x \cdot \sin\frac{1}{x} = 0$
+\pause
+\vspace{0.5em}
+\begin{example}
+Find $\displaystyle \lim_{x\to 0} \frac{\tan x - \sin x}{x^3}$.
+\end{example}
+\pause
+\textbf{Solution:} We cannot replace term-by-term in the numerator directly!
+\[
+= \lim_{x\to 0} \frac{\tan x\,(1-\cos x)}{x^3} = \lim_{x\to 0} \frac{x \cdot \frac{1}{2}x^2}{x^3} = \frac{1}{2}
+\]
+\end{frame}
+
+% --- Example 2: Combined equivalences ---
+\begin{frame}{Example 2: Combined Equivalent Substitution}
+\begin{example}
+Find $\displaystyle \lim_{x\to 0} \frac{(1+x^2)^{\frac{1}{3}}-1}{\cos x - 1}$.
+\end{example}
+\pause
+\textbf{Solution:} As $x \to 0$:
+\pause
+\begin{align*}
+&(1+x^2)^{\frac{1}{3}} - 1 \sim \frac{1}{3}x^2 \\
+&\cos x - 1 \sim -\frac{1}{2}x^2
+\end{align*}
+\pause
+Therefore:
+\[
+\boxed{\lim_{x\to 0} \frac{(1+x^2)^{\frac{1}{3}}-1}{\cos x - 1} = \lim_{x\to 0} \frac{\frac{1}{3}x^2}{-\frac{1}{2}x^2} = -\frac{2}{3}}
+\]
+\end{frame}
+
+% --- Section 7 Summary ---
+\begin{frame}{Section 7 Summary}
+\begin{block}{1. Comparison of Infinitesimals}
+Let $\alpha, \beta$ be infinitesimals in the same limiting process ($\alpha \neq 0$):
+\[
+\lim\frac{\beta}{\alpha} =
+\begin{cases}
+0, & \beta \text{ is higher order than } \alpha \\
+\infty, & \beta \text{ is lower order than } \alpha \\
+C\,(\neq 0), & \beta, \alpha \text{ are same order} \\
+1, & \beta, \alpha \text{ are equivalent}
+\end{cases}
+\]
+Also: $\displaystyle \lim\frac{\beta}{\alpha^k} = C \neq 0$ means $\beta$ is $k$-th order w.r.t.\ $\alpha$.
+\end{block}
+\end{frame}
+
+\begin{frame}{Section 7 Summary (cont.)}
+\begin{block}{2. Common Equivalent Infinitesimals (as $x \to 0$)}
+\[
+\sin x \sim x,\; \tan x \sim x,\; \arcsin x \sim x,\;
+1-\cos x \sim \tfrac{1}{2}x^2,\; \sqrt[n]{1+x}-1 \sim \tfrac{1}{n}x
+\]
+\end{block}
+\pause
+\begin{block}{3. Key Theorems}
+\begin{enumerate}
+    \item \textbf{Th1:} $\alpha \sim \beta \Longleftrightarrow \beta = \alpha + o(\alpha)$
+    \item \textbf{Th2 (Substitution):} If $\alpha\sim\alpha'$, $\beta\sim\beta'$, then
+          $\displaystyle \lim\frac{\beta}{\alpha} = \lim\frac{\beta'}{\alpha'}$
+    \item Valid for \textbf{multiplication/division}; use caution with sums/differences.
+\end{enumerate}
+\end{block}
+\end{frame}
+
+% ============================================================
+% END
+% ============================================================
+\end{document}
