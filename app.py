@@ -421,6 +421,12 @@ class Handler(BaseHTTPRequestHandler):
             return
         self.send_response(302)
         self.send_header("Location", "/?ok=1")
+        # Must declare an empty body: with HTTP/1.1 keep-alive, a response
+        # without Content-Length/Transfer-Encoding leaves the client waiting
+        # forever for a body that never comes (curl, scripts and Render's proxy
+        # all hang; browsers happen to follow Location immediately, which is
+        # why this bug hid during manual testing).
+        self.send_header("Content-Length", "0")
         self.end_headers()
 
 
